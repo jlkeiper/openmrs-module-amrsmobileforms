@@ -100,12 +100,14 @@ public class ResolveErrorsController {
 	 * Controller for resolveError post jsp Page
 	 */
 	@RequestMapping(value = "/module/amrsmobileforms/resolveError", method = RequestMethod.POST)
-	public String resolveError(HttpSession httpSession, @RequestParam String householdId,
-		@RequestParam Integer errorId, @RequestParam String errorItemAction,
-		@RequestParam String birthDate, @RequestParam String patientIdentifier,
-		@RequestParam String providerId, @RequestParam String householdIdentifier) {
+	public String resolveError(HttpSession httpSession, @RequestParam("householdId") String householdId,
+		@RequestParam("errorId") Integer errorId, @RequestParam("errorItemAction") String errorItemAction,
+		@RequestParam("birthDate") String birthDate, @RequestParam("patientIdentifier") String patientIdentifier,
+		@RequestParam("providerId") String providerId, @RequestParam("householdIdentifier") String householdIdentifier) {
 		MobileFormEntryService mobileService;
 		String filePath;
+		
+		log.debug("Error ID is "+errorId);
 
 		// user must be authenticated (avoids authentication errors)
 		if (Context.isAuthenticated()) {
@@ -260,7 +262,7 @@ public class ResolveErrorsController {
 	/**
 	 * Converts an xml file specified by <b>formPath</b> to a string
 	 *
-	 * @param formPath
+	 * @param formName
 	 * @param mfs
 	 * @return String representation of the file
 	 */
@@ -274,7 +276,7 @@ public class ResolveErrorsController {
 	/**
 	 * Takes in Mobile Queue and returns an absolute Path
 	 *
-	 * @param formPath
+	 * @param formName
 	 * @param mfs
 	 * @return String absolute path of the file
 	 */
