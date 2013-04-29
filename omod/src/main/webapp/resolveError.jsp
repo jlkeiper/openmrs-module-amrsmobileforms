@@ -53,7 +53,7 @@
 								<spring:message code="Patient.identifier" />: <span class="value">${queueItem.identifier}</span> <br/>
 								<spring:message code="Person.gender" />: <span class="value">${queueItem.gender}</span> <br/>
 								<br/>
-								<spring:message code="Encounter.location" />: <span class="value">${queueItem.location}</span> <br/>
+								<spring:message code="Encounters.location" />: <span class="value">${queueItem.location}</span> <br/>
 								<spring:message code="Encounter.datetime" />: <span class="value">${queueItem.encounterDate}</span> <br/>
 								<spring:message code="amrsmobileforms.resolveErrors.formName" />: <span class="value">${queueItem.formModelName} v${queueItem.formId}</span> <br/>
 								<br/>

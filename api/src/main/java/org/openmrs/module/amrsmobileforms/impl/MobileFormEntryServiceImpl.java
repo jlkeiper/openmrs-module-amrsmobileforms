@@ -1,5 +1,38 @@
 package org.openmrs.module.amrsmobileforms.impl;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.kxml2.io.KXmlSerializer;
+import org.kxml2.kdom.Document;
+import org.kxml2.kdom.Element;
+import org.kxml2.kdom.Node;
+import org.mockito.Mockito;
+import org.openmrs.Encounter;
+import org.openmrs.User;
+import org.openmrs.api.context.Context;
+import org.openmrs.module.amrsmobileforms.Economic;
+import org.openmrs.module.amrsmobileforms.EconomicConceptMap;
+import org.openmrs.module.amrsmobileforms.EconomicObject;
+import org.openmrs.module.amrsmobileforms.HouseholdMember;
+import org.openmrs.module.amrsmobileforms.MobileFormEntryError;
+import org.openmrs.module.amrsmobileforms.MobileFormEntryService;
+import org.openmrs.module.amrsmobileforms.MobileFormHousehold;
+import org.openmrs.module.amrsmobileforms.MobileFormQueue;
+import org.openmrs.module.amrsmobileforms.Survey;
+import org.openmrs.module.amrsmobileforms.SyncLogModel;
+import org.openmrs.module.amrsmobileforms.db.MobileFormEntryDAO;
+import org.openmrs.module.amrsmobileforms.util.MobileFormEntryUtil;
+import org.openmrs.module.xforms.Xform;
+import org.openmrs.module.xforms.XformBuilder;
+import org.openmrs.module.xforms.XformConstants;
+import org.openmrs.module.xforms.XformObsEdit;
+import org.openmrs.module.xforms.XformsService;
+import org.openmrs.module.xforms.formentry.FormEntryWrapper;
+import org.openmrs.util.FormUtil;
+import org.springframework.util.StringUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -16,79 +49,30 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import org.apache.commons.io.IOUtils;
-
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.kxml2.io.KXmlSerializer;
-import org.kxml2.kdom.Document;
-import org.kxml2.kdom.Element;
-import org.kxml2.kdom.Node;
-import org.mockito.Mockito;
-import org.openmrs.Encounter;
-import org.openmrs.User;
-import org.openmrs.api.APIException;
-import org.openmrs.api.context.Context;
-
-import org.openmrs.module.amrsmobileforms.Economic;
-import org.openmrs.module.amrsmobileforms.EconomicConceptMap;
-import org.openmrs.module.amrsmobileforms.EconomicObject;
-import org.openmrs.module.amrsmobileforms.HouseholdMember;
-import org.openmrs.module.amrsmobileforms.MobileFormEntryError;
-import org.openmrs.module.amrsmobileforms.MobileFormEntryService;
-import org.openmrs.module.amrsmobileforms.MobileFormHousehold;
-import org.openmrs.module.amrsmobileforms.MobileFormQueue;
-import org.openmrs.module.amrsmobileforms.Survey;
-import org.openmrs.module.amrsmobileforms.SyncLogModel;
-
-import org.openmrs.module.amrsmobileforms.db.MobileFormEntryDAO;
-import org.openmrs.module.amrsmobileforms.util.MobileFormEntryUtil;
-import org.openmrs.module.amrsmobileforms.util.XFormEditor;
-import org.openmrs.module.xforms.Xform;
-import org.openmrs.module.xforms.XformBuilder;
-import org.openmrs.module.xforms.XformConstants;
-import org.openmrs.module.xforms.XformObsEdit;
-import org.openmrs.module.xforms.XformsService;
-import org.openmrs.module.xforms.formentry.FormEntryWrapper;
-import org.openmrs.util.FormUtil;
-import org.springframework.util.StringUtils;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
 /**
  * @author Samuel Mbugua
- *
  */
 public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 	private static Log log = LogFactory.getLog(MobileFormEntryServiceImpl.class);
-	
+
 	private MobileFormEntryDAO dao;
-	
+
 	public MobileFormEntryServiceImpl() {
 	}
-	
+
 	@SuppressWarnings("unused")
 	private MobileFormEntryDAO getMobileFormEntryDAO() {
 		return dao;
 	}
-	
+
 	public void setMobileFormEntryDAO(MobileFormEntryDAO dao) {
 		this.dao = dao;
 	}
-	
+
 
 	/* (non-Javadoc)
-	 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getMobileFormEntryQueue(java.lang.String)
-	 */
+		 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getMobileFormEntryQueue(java.lang.String)
+		 */
 	public MobileFormQueue getMobileFormEntryQueue(String absoluteFilePath) {
 		MobileFormQueue queueItem = new MobileFormQueue();
 		queueItem.setFileSystemUrl(absoluteFilePath);
@@ -99,7 +83,7 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 	/* (non-Javadoc)
 	 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getSystemVariables()
 	 */
-	public SortedMap<String,String> getSystemVariables() {
+	public SortedMap<String, String> getSystemVariables() {
 		TreeMap<String, String> systemVariables = new TreeMap<String, String>();
 		systemVariables.put("MOBILE_FORMS_RESOURCES_DIR", MobileFormEntryUtil.getMobileFormsResourcesDir().getAbsolutePath());
 		systemVariables.put("MOBILE_FORMS_DROP_DIR", MobileFormEntryUtil.getMobileFormsDropDir().getAbsolutePath());
@@ -108,29 +92,29 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 		systemVariables.put("MOBILE_FORMS_ERROR_DIR", MobileFormEntryUtil.getMobileFormsErrorDir().getAbsolutePath());
 		return systemVariables;
 	}
-	
+
 	/* (non-Javadoc)
-	 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getMobileResources()
-	 */
+		 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getMobileResources()
+		 */
 	public List<File> getMobileResources() {
-		File resourcesDir=MobileFormEntryUtil.getMobileFormsResourcesDir();
-		List<File> lst=new ArrayList<File>();
-		for(File file:resourcesDir.listFiles()) {
+		File resourcesDir = MobileFormEntryUtil.getMobileFormsResourcesDir();
+		List<File> lst = new ArrayList<File>();
+		for (File file : resourcesDir.listFiles()) {
 			lst.add(file);
 		}
 		return lst;
 	}
-	
+
 	/* (non-Javadoc)
-	 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getHousehold(java.lang.String)
-	 */
+		 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getHousehold(java.lang.String)
+		 */
 	public MobileFormHousehold getHousehold(String householdIdentifier) {
 		return dao.getHousehold(householdIdentifier);
 	}
-	
+
 	/* (non-Javadoc)
-	 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#createHouseholdInDatabase(org.openmrs.module.amrsmobileforms.MobileFormHousehold)
-	 */
+		 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#createHouseholdInDatabase(org.openmrs.module.amrsmobileforms.MobileFormHousehold)
+		 */
 	public void saveHousehold(MobileFormHousehold household) {
 		dao.saveHousehold(household);
 	}
@@ -225,10 +209,10 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 	public void saveHouseholdMember(HouseholdMember householdMember) {
 		dao.saveHouseholdMember(householdMember);
 	}
-	
+
 	/* (non-Javadoc)
-	 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getAllMembersInHousehold(java.lang.Integer)
-	 */
+		 * @see org.openmrs.module.amrsmobileforms.MobileFormEntryService#getAllMembersInHousehold(java.lang.Integer)
+		 */
 	public List<HouseholdMember> getAllMembersInHousehold(MobileFormHousehold household) {
 		return dao.getAllMembersInHousehold(household);
 	}
@@ -238,35 +222,33 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 	 */
 	public List<SyncLogModel> getSyncLog(Date logDate) {
 		List<SyncLogModel> logList = new ArrayList<SyncLogModel>();
-		File logDir=MobileFormEntryUtil.getMobileFormsSyncLogDir();
+		File logDir = MobileFormEntryUtil.getMobileFormsSyncLogDir();
 		if (logDate == null)
-			logDate=new Date();
+			logDate = new Date();
 		String logFileName = logDir.getAbsolutePath() + File.separator + "log-" + new SimpleDateFormat("yyyy-MM-dd").format(logDate) + ".log";
 		File logFile = new File(logFileName);
 		if (!logFile.exists())
-			return null;			
+			return null;
 		String line = null;
 		try {
-			BufferedReader input =  new BufferedReader(new FileReader(logFile));
+			BufferedReader input = new BufferedReader(new FileReader(logFile));
 			try {
-				while (( line = input.readLine()) != null){
-					if (line.indexOf(",")!=-1) {
+				while ((line = input.readLine()) != null) {
+					if (line.indexOf(",") != -1) {
 						SyncLogModel logModel = getLogModel(line);
 						if (logModel != null)
 							logList.add(logModel);
 					}
 				}
+			} finally {
+				input.close();
 			}
-			finally {
-				 input.close();
-			 }
-	    }
-	    catch (IOException ex){
-	      ex.printStackTrace();
-	    }
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
 		return logList;
 	}
-	
+
 	/**
 	 * Takes a Comma Separated line and creates an object of type {@link SyncLogModel}
 	 */
@@ -274,60 +256,60 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 		SyncLogModel syncLogModel = new SyncLogModel();
 		// syncId
 		if (line.indexOf(",") != -1) {
-			syncLogModel.setSyncId(Integer.parseInt(line.substring(0,line.indexOf(","))));
-			line=line.substring(line.indexOf(",") + 1);
-		}else
+			syncLogModel.setSyncId(Integer.parseInt(line.substring(0, line.indexOf(","))));
+			line = line.substring(line.indexOf(",") + 1);
+		} else
 			return null;
 		// syncDate
 		if (line.indexOf(",") != -1) {
 			try {
-				DateFormat df =new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy");
-				syncLogModel.setSyncDate(df.parse(line.substring(0,line.indexOf(","))));
-				line=line.substring(line.indexOf(",") + 1);
+				DateFormat df = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy");
+				syncLogModel.setSyncDate(df.parse(line.substring(0, line.indexOf(","))));
+				line = line.substring(line.indexOf(",") + 1);
 			} catch (ParseException e) {
 				e.printStackTrace();
 				return null;
 			}
-		}else
+		} else
 			return null;
-		
+
 		// providerId
 		if (line.indexOf(",") != -1) {
-			syncLogModel.setProviderId(line.substring(0,line.indexOf(",")));
-			line=line.substring(line.indexOf(",") + 1);
-		}else
+			syncLogModel.setProviderId(line.substring(0, line.indexOf(",")));
+			line = line.substring(line.indexOf(",") + 1);
+		} else
 			return null;
-		
+
 		// deviceId
 		if (line.indexOf(",") != -1) {
-			syncLogModel.setDeviceId(line.substring(0,line.indexOf(",")));
-			line=line.substring(line.indexOf(",") + 1);
-		}else
+			syncLogModel.setDeviceId(line.substring(0, line.indexOf(",")));
+			line = line.substring(line.indexOf(",") + 1);
+		} else
 			return null;
-		
+
 		// 	householdId;
 		if (line.indexOf(",") != -1) {
-			syncLogModel.setHouseholdId(line.substring(0,line.indexOf(",")));
-			line=line.substring(line.indexOf(",") + 1);
-		}else
+			syncLogModel.setHouseholdId(line.substring(0, line.indexOf(",")));
+			line = line.substring(line.indexOf(",") + 1);
+		} else
 			return syncLogModel;
-		
+
 		// fileName;
 		if (line.indexOf(",") != -1) {
-			syncLogModel.setFileName(line.substring(0,line.indexOf(",")));
-			line=line.substring(line.indexOf(",") + 1);
-		}else
+			syncLogModel.setFileName(line.substring(0, line.indexOf(",")));
+			line = line.substring(line.indexOf(",") + 1);
+		} else
 			return syncLogModel;
-		
+
 		// fileSize;
 		if (line.indexOf(",") != -1) {
-			syncLogModel.setFileSize(line.substring(0,line.indexOf(",")));
-			line=line.substring(line.indexOf(",") + 1);
-		}else
+			syncLogModel.setFileSize(line.substring(0, line.indexOf(",")));
+			line = line.substring(line.indexOf(",") + 1);
+		} else
 			syncLogModel.setFileSize(line);
-		
+
 		return syncLogModel;
-	
+
 	}
 
 	/* (non-Javadoc)
@@ -335,15 +317,15 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 	 */
 	public List<String> getAllSyncLogs() {
 		List<String> logFiles = new ArrayList<String>();
-		File logDir=MobileFormEntryUtil.getMobileFormsSyncLogDir();
-		DateFormat df =new SimpleDateFormat("yyyy-MM-dd");
-		DateFormat df1 =new SimpleDateFormat("yyyy-MMM-dd");
+		File logDir = MobileFormEntryUtil.getMobileFormsSyncLogDir();
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+		DateFormat df1 = new SimpleDateFormat("yyyy-MMM-dd");
 		for (File file : logDir.listFiles()) {
-			String fileName=file.getName();
+			String fileName = file.getName();
 			if (fileName.indexOf("-") != -1 && fileName.indexOf(".") != -1) {
 				try {
-					fileName=fileName.substring(fileName.indexOf("-")+1,fileName.lastIndexOf("."));
-					Date date=df.parse(fileName);
+					fileName = fileName.substring(fileName.indexOf("-") + 1, fileName.lastIndexOf("."));
+					Date date = df.parse(fileName);
 					logFiles.add(df1.format(date));
 				} catch (ParseException e) {
 					e.printStackTrace();
@@ -366,23 +348,24 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 	}
 
 	/**
-	 * @see MobileFormEntryService#renderExportForEncounter(org.openmrs.Encounter) 
+	 * @see MobileFormEntryService#renderExportForEncounter(org.openmrs.Encounter)
 	 */
 	public String renderExportForEncounter(Encounter encounter) {
+
 		if (encounter == null)
 			return null;
-		
+
 		XformsService xformsService = Context.getService(XformsService.class);
-		
+
 		// create a mock request for the sake of rendering data
 		HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
 		HttpSession session = Mockito.mock(HttpSession.class);
 		Mockito.when(request.getSession()).thenReturn(session);
-		
+
 		// get the xform
 		Xform xform = xformsService.getXform(encounter.getForm());
 		String xformXml = xform.getXformXml();
-		
+
 		// start a new document from the xform template
 		Document doc = XformBuilder.getDocument(xformXml);
 
@@ -390,28 +373,27 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 		XformBuilder.setNodeValue(doc, XformConstants.NODE_SESSION, request.getSession().getId());
 		XformBuilder.setNodeValue(doc, XformConstants.NODE_UID, FormEntryWrapper.generateFormUid());
 		XformBuilder.setNodeValue(doc, XformConstants.NODE_DATE_ENTERED, FormUtil.dateToString(encounter.getDateCreated()));
-	
+
 		// add enterer
 		User user = encounter.getCreator();
-		String enterer = user.getUserId() + "^" + user.getGivenName() + " " + user.getFamilyName();
+		String enterer = String.format("%d^%s %s", user.getUserId(), user.getGivenName(), user.getFamilyName());
 		XformBuilder.setNodeValue(doc, XformConstants.NODE_ENTERER, enterer);
 
 		// add provider
-		// TODO see if this really works ... should be personId, right?
 		List<User> providers = Context.getUserService().getUsersByPerson(encounter.getProvider(), true);
 		if (!providers.isEmpty())
 			XformBuilder.setNodeValue(doc, XformBuilder.NODE_ENCOUNTER_PROVIDER_ID, providers.get(0).getUserId().toString());
 
 		// add encounter location
 		XformBuilder.setNodeValue(doc, XformBuilder.NODE_ENCOUNTER_LOCATION_ID, encounter.getLocation().getLocationId().toString());
-		
+
 		// populate xform with patient information
 		try {
 			XformBuilder.setPatientFieldValues(encounter.getPatient(), encounter.getForm(), doc.getRootElement(), xformsService);
 		} catch (Exception ex) {
 			log.error("could not populate xform with patient information.", ex);
 		}
-		
+
 		// populate xform with observations
 		try {
 			XformObsEdit.fillObs(request, doc, encounter.getEncounterId(), xformXml);
@@ -420,21 +402,22 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 		}
 
 		// get the <form/> element ... we care most about it
-		Element formNode = XformBuilder.getElement(doc.getRootElement(),"form");
+		Element formNode = XformBuilder.getElement(doc.getRootElement(), "form");
 
 		// get the patient, encounter and observation nodes
 		Element patientNode = XformBuilder.getElement(formNode, "patient");
 		Element encounterNode = XformBuilder.getElement(formNode, "encounter");
 		Element obsNode = XformBuilder.getElement(formNode, "obs");
 
+
 		// remove the aforementioned nodes from formNode
 		removeChildNode(formNode, "patient");
 		removeChildNode(formNode, "encounter");
 		removeChildNode(formNode, "obs");
-		
+
 		// start over again with a clean document
 		doc = new Document();
-		
+
 		// add the form node
 		doc.addChild(0, Node.ELEMENT, formNode);
 
@@ -446,10 +429,12 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 		addTextNode(metaNode, "end_time", "");
 		addTextNode(metaNode, "device_id", "");
 		addTextNode(metaNode, "subscriber_id", null);
+		addTextNode(metaNode, "encounter.uuid", encounter.getUuid());
+		addTextNode(metaNode, "patient.uuid", encounter.getPatient().getUuid());
 		formNode.addChild(Node.ELEMENT, metaNode);
-		
+
 		// ... add <survey/> and <household> ...
-		
+
 		// create the individual(s) nodes
 		Element individualsNode = formNode.createElement(null, null);
 		individualsNode.setName("individuals");
@@ -458,24 +443,23 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 		Element individualNode = individualsNode.createElement(null, null);
 		individualNode.setName("individual");
 		individualsNode.addChild(Node.ELEMENT, individualNode);
-		
+
 		// load up the individual node with stuff
 		individualNode.addChild(Node.ELEMENT, patientNode);
 		individualNode.addChild(Node.ELEMENT, encounterNode);
 		individualNode.addChild(Node.ELEMENT, obsNode);
-		
+
 		// render the document to a string (stolen from XformBuilder#fromDoc2String)
 		KXmlSerializer serializer = new KXmlSerializer();
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
-		
+
 		try {
 			serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
 			serializer.setOutput(dos, XformConstants.DEFAULT_CHARACTER_ENCODING);
 			doc.write(serializer);
 			serializer.flush();
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			log.error("could not serialize or render node to xml.", ex);
 			return null;
 		}
@@ -516,15 +500,15 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 //		
 //		// print the formDoc to a string ...
 //		return formDoc.toString();
-		
+
 		return xml;
 	}
-	
+
 	/**
 	 * stolen almost verbatim from XformBuilder.
-	 * 
+	 *
 	 * @param node
-	 * @param name 
+	 * @param name
 	 */
 	private static void removeChildNode(Element node, String name) {
 		for (int index = 0; index < node.getChildCount(); index++) {
@@ -538,7 +522,7 @@ public class MobileFormEntryServiceImpl implements MobileFormEntryService {
 			}
 		}
 	}
-	
+
 	private static void addTextNode(Element parent, String name, String value) {
 		Element e = parent.createElement(null, null);
 		e.setName(name);
