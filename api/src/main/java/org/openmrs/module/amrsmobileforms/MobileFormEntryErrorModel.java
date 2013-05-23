@@ -31,9 +31,7 @@ public class MobileFormEntryErrorModel extends MobileFormEntryError {
 	private String totalEligible = "";
 
 	// data from the formData encounter section
-	//encounter.provider_id
 	private String location = "";
-	private String providerId = "";
 	private String encounterDate = "";
 	private String formModelName = "";
 	private String formId = "";
@@ -56,6 +54,8 @@ public class MobileFormEntryErrorModel extends MobileFormEntryError {
 		setError(error.getError());
 		setErrorDetails(error.getErrorDetails());
 		setDateCreated(error.getDateCreated());
+		setProviderId(error.getProviderId());
+		setLocationId(error.getLocationId());
 
 		//For resolve form
 		setComment(error.getComment());
@@ -77,7 +77,10 @@ public class MobileFormEntryErrorModel extends MobileFormEntryError {
 				
 					setTotalHousehold(xp.evaluate("/form/household/meta_data/total_household", formDataDoc));
 					setTotalEligible(xp.evaluate("/form/household/meta_data/total_eligible", formDataDoc));
-					setProviderId(xp.evaluate("/form/encounter/encounter.provider_id",formDataDoc));
+
+					if (getProviderId() == null)
+						setProviderId(xp.evaluate("/form/survey/provider_id", formDataDoc));
+
 				} else {
 					setName(xp.evaluate("/form/patient/patient.given_name", formDataDoc) + " " +
 							xp.evaluate("/form/patient/patient.middle_name", formDataDoc) + " " +
@@ -94,10 +97,12 @@ public class MobileFormEntryErrorModel extends MobileFormEntryError {
 				
 					setTotalHousehold("N/A");
 					setTotalEligible("N/A");
-					
-					setProviderId(xp.evaluate("/form/encounter/encounter.provider_id",formDataDoc));
+
+					if (getProviderId() == null)
+						setProviderId(xp.evaluate("/form/encounter/encounter.provider_id", formDataDoc));
 				}
 
+				// common properties for both household and individual
 				setFormModelName(xp.evaluate("/form/@name", formDataDoc));
 				setFormId(xp.evaluate("/form/@version", formDataDoc));
 
@@ -256,20 +261,6 @@ public class MobileFormEntryErrorModel extends MobileFormEntryError {
 		this.totalEligible = totalEligible;
 	}
 	
-	/**
-	 * @return the providerId
-	 */
-	public String getProviderId() {
-		return providerId;
-	}
-
-	/**
-	 * @param providerId the providerId to set
-	 */
-	public void setProviderId(String providerId) {
-		this.providerId = providerId;
-	}
-
 	/**
 	 * @return the errorType
 	 */
