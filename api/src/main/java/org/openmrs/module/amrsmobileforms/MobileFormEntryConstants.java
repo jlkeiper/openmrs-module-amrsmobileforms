@@ -89,7 +89,7 @@ public class MobileFormEntryConstants {
 	/** The survey nodes prefix. */
 	public final static String SURVEY_PREFIX = "/form/survey";
 
-	/** The household nodes prefix. */
+    /** The household nodes prefix. */
 	public final static String HOUSEHOLD_PREFIX = "/form/household";
 
 	/** The economics nodes prefix. */
@@ -151,7 +151,8 @@ public class MobileFormEntryConstants {
 	
 	public final static String ENCOUNTER_NODE = "/form/encounter";
 	public final static String ENCOUNTER_PROVIDER = "encounter.provider_id";
-	
+    public final static String ENCOUNTER_LOCATION= "encounter.location_id";
+
 	//TEMPORAL
 	public final static String OBS_NODE = "/form/obs";
 	public final static String OBS_RELATIONSHIP = "relation_to_househead";
